@@ -1,34 +1,3 @@
-terraform {
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.0"
-    }
-  }
-}
-
-locals {
-  component   = "eks"
-  prefix      = "${var.config.product}-${var.config.environment}-${var.config.service}"
-  name_prefix = "${local.prefix}-eks"
-  alb = {
-    serviceaccount = "aws-load-balancer-controller"
-    namespace      = "kube-system"
-  }
-}
-
-data "aws_region" "current" {}
-
-data "aws_caller_identity" "current" {}
-
-data "aws_eks_cluster" "eks" {
-  name = module.eks.cluster_id
-}
-
-data "aws_eks_cluster_auth" "cluster" {
-  name = module.eks.cluster_id
-}
-
 resource "aws_iam_policy" "service_account_policy" {
   count = var.create_albcontroller ? 1 : 0
 
@@ -125,8 +94,6 @@ resource "helm_release" "alb-controller" {
 ## enable access logs
 # doc: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html?icmpid=docs_elbv2_console
 #################################################################################
-data "aws_elb_service_account" "main" {}
-
 resource "aws_s3_bucket" "elb_logs" {
   count = var.create_albcontroller ? 1 : 0
 

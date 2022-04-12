@@ -4,18 +4,6 @@ variable "cluster_id" {
   default     = null
 }
 
-variable "cluster_certificate_authority_data" {
-  description = "Base64 encoded certificate data required to communicate with the cluster"
-  type        = string
-  default     = null
-}
-
-variable "cluster_endpoint" {
-  description = "Endpoint for your Kubernetes API server"
-  type        = string
-  default     = null
-}
-
 variable "config" {
   description = "Standard parameters"
   type = object({
@@ -25,12 +13,10 @@ variable "config" {
   })
 }
 
-variable "eks" {
-  description = "EKS stuffs"
-  type = object({
-    cluster_id  = string
-    oidc_issuer = string
-  })
+variable "oidc_issuer" {
+  description = "oidc_issuer"
+  type        = string
+  default     = ""
 }
 
 variable "create_autoscaler" {

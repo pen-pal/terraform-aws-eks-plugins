@@ -1,37 +1,3 @@
-terraform {
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.0"
-    }
-  }
-}
-
-locals {
-  component   = "addon"
-  name_prefix = "${var.config.product}-${var.config.environment}-${var.config.service}-adddon"
-
-  eks = {
-    cluster_id  = var.eks.cluster_id
-    oidc_issuer = var.eks.oidc_issuer
-  }
-
-  externalsecrets = {
-    namespace      = "kube-system"
-    serviceaccount = "externalsecrets-sa"
-  }
-}
-
-# external_secrets.tf
-# metric_server.tf
-# cluster_autoscaler.tf
-# filebeat_daemon.tf
-data "aws_region" "current" {}
-
-data "aws_partition" "current" {}
-
-data "aws_caller_identity" "current" {}
-
 data "aws_iam_policy_document" "read_store" {
   statement {
     sid = "ReadSecretsStore"

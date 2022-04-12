@@ -1,35 +1,3 @@
-terraform {
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.0"
-    }
-  }
-}
-
-locals {
-  component   = "clusterautoscaler"
-  name_prefix = "${var.config.product}-${var.config.environment}-${var.config.service}-${local.component}"
-
-  config = var.config
-
-  eks = {
-    cluster_id  = var.eks.cluster_id
-    oidc_issuer = var.eks.oidc_issuer
-  }
-
-  clusterautoscaler = {
-    namespace      = "kube-system"
-    serviceaccount = "clusterautoscaler"
-  }
-
-  aws = {
-    region = data.aws_region.current.name
-  }
-}
-
-data "aws_region" "current" {}
-
 data "aws_iam_policy_document" "cluster_autoscaler" {
   statement {
     sid    = "clusterAutoscalerAll"
