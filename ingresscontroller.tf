@@ -14,13 +14,13 @@ data "aws_iam_policy_document" "alb_web_identity_assume_role_policy" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(data.aws_eks_cluster.eks.identity[0].oidc[0].issuer, "https://", "")}:sub"
+      variable = "${replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")}:sub"
       values   = ["system:serviceaccount:${local.alb.namespace}:${local.alb.serviceaccount}"]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(data.aws_eks_cluster.eks.identity[0].oidc[0].issuer, "https://", "")}:aud"
+      variable = "${replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")}:aud"
       values   = ["sts.amazonaws.com"]
     }
 
