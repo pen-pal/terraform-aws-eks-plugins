@@ -5,7 +5,7 @@ locals {
 
   eks = {
     cluster_id  = var.cluster_id
-    oidc_issuer = var.oidc_issuer
+    oidc_provider = var.oidc_provider
   }
 
   clusterautoscaler = {
