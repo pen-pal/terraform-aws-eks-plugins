@@ -13,8 +13,8 @@ variable "config" {
   })
 }
 
-variable "oidc_issuer" {
-  description = "oidc_issuer"
+variable "oidc_provider" {
+  description = "oidc_provider"
   type        = string
   default     = ""
 }
