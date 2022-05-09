@@ -2,7 +2,7 @@
 # Metric Server Helm
 ############################################
 resource "helm_release" "metricsserver" {
-  count = creat_metricserver ? 1 : 0
+  count = var.create_metricserver ? 1 : 0
 
   name       = "metricsserveer"
   repository = "https://kubernetes-sigs.github.io/metrics-server/"

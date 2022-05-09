@@ -1,4 +1,6 @@
 data "aws_iam_policy_document" "cluster_autoscaler" {
+  count = var.create_autoscaler ? 1 : 0
+
   statement {
     sid    = "clusterAutoscalerAll"
     effect = "Allow"
@@ -45,30 +47,30 @@ resource "aws_iam_policy" "cluster_autoscaler" {
 
   name_prefix = local.name_prefix
   description = "EKS cluster-autoscaler policy for cluster ${local.eks.cluster_id}"
-  policy      = data.aws_iam_policy_document.cluster_autoscaler.json
+  policy      = data.aws_iam_policy_document.cluster_autoscaler[0].json
 }
 
 module "iam-assumable-role-with-oidc-ca" {
-  count = var.create ? 1 : 0
+  count = var.create_autoscaler ? 1 : 0
 
   source                        = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
   version                       = "4.3.0"
   create_role                   = true
   role_name                     = local.name_prefix
   provider_url                  = replace(local.eks.oidc_issuer, "https://", "")
-  role_policy_arns              = [aws_iam_policy.cluster_autoscaler.arn]
+  role_policy_arns              = [aws_iam_policy.cluster_autoscaler[0].arn]
   oidc_fully_qualified_subjects = ["system:serviceaccount:${local.clusterautoscaler.namespace}:${local.clusterautoscaler.serviceaccount}"]
 }
 
 # create service accont and annotate with iam role
 resource "kubernetes_service_account" "clusterautoscaler_serviceaccount" {
-  count = var.create ? 1 : 0
+  count = var.create_autoscaler ? 1 : 0
 
   metadata {
     name      = local.clusterautoscaler.serviceaccount
     namespace = local.clusterautoscaler.namespace
     annotations = {
-      "eks.amazonaws.com/role-arn" = module.iam-assumable-role-with-oidc-ca.iam_role_arn
+      "eks.amazonaws.com/role-arn" = module.iam-assumable-role-with-oidc-ca[0].iam_role_arn
     }
   }
   automount_service_account_token = true
@@ -77,7 +79,7 @@ resource "kubernetes_service_account" "clusterautoscaler_serviceaccount" {
 
 # apply helm chart  maintained by clusterautoscaler team
 resource "helm_release" "clusterautoscaler" {
-  count = var.create ? 1 : 0
+  count = var.create_autoscaler ? 1 : 0
 
   name       = "cluster-controller"
   repository = "https://kubernetes.github.io/autoscaler"

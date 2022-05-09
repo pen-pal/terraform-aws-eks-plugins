@@ -1,4 +1,6 @@
 data "aws_iam_policy_document" "read_store" {
+  count = var.create_externalsecretsmanager ? 1 : 0
+
   statement {
     sid = "ReadSecretsStore"
     actions = [
@@ -16,7 +18,7 @@ resource "aws_iam_policy" "read_store_policy" {
   count = var.create_externalsecretsmanager ? 1 : 0
 
   name   = "${local.name_prefix}_read_store_policy"
-  policy = data.aws_iam_policy_document.read_store.json
+  policy = data.aws_iam_policy_document.read_store[0].json
 }
 
 # using community module instead, much cleaner
@@ -33,7 +35,7 @@ module "iam_iam-assumable-role-with-oidc" {
   provider_urls = [local.eks.oidc_issuer]
 
   role_policy_arns = [
-    aws_iam_policy.read_store_policy.arn
+    aws_iam_policy.read_store_policy[0].arn
   ]
   oidc_fully_qualified_subjects = ["system:serviceaccount:${local.externalsecrets.namespace}:${local.externalsecrets.serviceaccount}"]
 
@@ -47,7 +49,7 @@ resource "kubernetes_service_account" "externalsecrets_serviceaccount" {
     name      = local.externalsecrets.serviceaccount
     namespace = local.externalsecrets.namespace
     annotations = {
-      "eks.amazonaws.com/role-arn" = module.iam_iam-assumable-role-with-oidc.iam_role_arn
+      "eks.amazonaws.com/role-arn" = module.iam_iam-assumable-role-with-oidc[0].iam_role_arn
     }
   }
   automount_service_account_token = true
@@ -60,7 +62,7 @@ resource "kubernetes_service_account" "externalsecrets_serviceaccount" {
 resource "helm_release" "external_secrets_manager" {
   count = var.create_externalsecretsmanager ? 1 : 0
 
-  name       = "${local.name_prefix}-externalsecrets"
+  name       = "${local.prefix}-externalsecrets"
   repository = "https://external-secrets.github.io/kubernetes-external-secrets"
   chart      = "kubernetes-external-secrets"
   version    = "8.2.2"

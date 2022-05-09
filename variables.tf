@@ -19,6 +19,12 @@ variable "oidc_issuer" {
   default     = ""
 }
 
+variable "oidc_issuer_arn" {
+  description = "oidc_issuer_arn"
+  type        = string
+  default     = ""
+}
+
 variable "create_autoscaler" {
   description = "either to create and deploy eks cluster autoscaler resources"
   type        = bool

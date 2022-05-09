@@ -1,11 +1,13 @@
 locals {
   name_prefix = "${var.config.product}-${var.config.environment}-${var.config.service}"
+  prefix      = "${var.config.product}-${var.config.environment}"
 
   config = var.config
 
   eks = {
-    cluster_id  = var.cluster_id
-    oidc_issuer = var.oidc_issuer
+    cluster_id      = var.cluster_id
+    oidc_issuer     = var.oidc_issuer
+    oidc_issuer_arn = var.oidc_issuer_arn
   }
 
   clusterautoscaler = {

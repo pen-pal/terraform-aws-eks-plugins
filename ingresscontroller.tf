@@ -3,7 +3,7 @@ resource "aws_iam_policy" "service_account_policy" {
 
   name        = "${local.name_prefix}-policy"
   description = "Policy to manage ALB via ALB Ingress Controller"
-  policy      = file("${path.module}/files/iam_policy.json")
+  policy      = file("${path.module}/iam_policy.json")
 }
 
 # create iam role for alb to use
@@ -14,18 +14,18 @@ data "aws_iam_policy_document" "alb_web_identity_assume_role_policy" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(data.aws_eks_cluster.eks.identity[0].oidc[0].issuer, "https://", "")}:sub"
+      variable = "${replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")}:sub"
       values   = ["system:serviceaccount:${local.alb.namespace}:${local.alb.serviceaccount}"]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(data.aws_eks_cluster.eks.identity[0].oidc[0].issuer, "https://", "")}:aud"
+      variable = "${replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")}:aud"
       values   = ["sts.amazonaws.com"]
     }
 
     principals {
-      identifiers = [local.oidc_arn]
+      identifiers = [local.eks.oidc_issuer_arn]
       type        = "Federated"
     }
   }
@@ -42,8 +42,8 @@ resource "aws_iam_role" "alb_web_identity_role" {
 resource "aws_iam_role_policy_attachment" "attached_policy" {
   count = var.create_albcontroller ? 1 : 0
 
-  role       = aws_iam_role.alb_web_identity_role.name
-  policy_arn = aws_iam_policy.service_account_policy.arn
+  role       = aws_iam_role.alb_web_identity_role[0].name
+  policy_arn = aws_iam_policy.service_account_policy[0].arn
 }
 
 # create service accont and annotate with iam role
@@ -54,7 +54,7 @@ resource "kubernetes_service_account" "alb-serviceaccount" {
     name      = local.alb.serviceaccount
     namespace = local.alb.namespace
     annotations = {
-      "eks.amazonaws.com/role-arn" = aws_iam_role.alb_web_identity_role.arn
+      "eks.amazonaws.com/role-arn" = aws_iam_role.alb_web_identity_role[0].arn
     }
   }
   automount_service_account_token = true
@@ -68,8 +68,8 @@ resource "helm_release" "alb-controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   #chart     = "https://aws.github.io/eks-charts/aws-load-balancer-controller-1.2.1.tgz"
-  chart     = "eks/aws-load-balancer-controller"
-  version   = "2.4.1"
+  chart     = "aws-load-balancer-controller"
+  version   = "1.4.1"
   namespace = local.alb.namespace
 
   set {
@@ -84,7 +84,7 @@ resource "helm_release" "alb-controller" {
 
   set {
     name  = "clusterName"
-    value = module.eks.cluster_id
+    value = local.eks.cluster_id
     type  = "string"
   }
   depends_on = [kubernetes_service_account.alb-serviceaccount]
