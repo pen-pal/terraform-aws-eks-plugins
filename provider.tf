@@ -1,23 +1,15 @@
 ### configure kubernetes provider
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
-  exec {
-    api_version = "client.authentication.k8s.io/v1alpha1"
-    command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", var.cluster_id]
-  }
+  host                   = element(concat(data.aws_eks_cluster.cluster.*.endpoint, [""]), 0)
+  cluster_ca_certificate = base64decode(element(concat(data.aws_eks_cluster.cluster.*.certificate_authority.0.data, [""]), 0))
+  token                  = element(concat(data.aws_eks_cluster_auth.cluster.*.token, [""]), 0)
 }
 
 ### configure helm provider
 provider "helm" {
   kubernetes {
-    host                   = data.aws_eks_cluster.cluster.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
-    exec {
-      api_version = "client.authentication.k8s.io/v1alpha1"
-      command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", var.cluster_id]
-    }
+  host                   = element(concat(data.aws_eks_cluster.cluster.*.endpoint, [""]), 0)
+  cluster_ca_certificate = base64decode(element(concat(data.aws_eks_cluster.cluster.*.certificate_authority.0.data, [""]), 0))
+  token                  = element(concat(data.aws_eks_cluster_auth.cluster.*.token, [""]), 0)
   }  
 }
