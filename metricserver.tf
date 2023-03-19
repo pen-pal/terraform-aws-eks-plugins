@@ -2,12 +2,12 @@
 # Metric Server Helm
 ############################################
 resource "helm_release" "metricsserver" {
-  count = var.create_metricserver ? 1 : 0
+  count = var.create-metric-server ? 1 : 0
 
   name       = "metricsserveer"
   repository = "https://kubernetes-sigs.github.io/metrics-server/"
   chart      = "metrics-server"
-  version    = "3.8.2"
+  version    = "3.8.3"
   namespace  = local.metric-server.namespace
 
   set {
@@ -15,8 +15,4 @@ resource "helm_release" "metricsserver" {
     value = "true"
   }
 
-  set {
-    name  = "serviceeMonitor.enabled"
-    value = "true"
-  }
 }
