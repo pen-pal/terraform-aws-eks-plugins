@@ -37,12 +37,12 @@ variable "create-metric-server" {
   default     = false
 }
 
-#variable "create-nvidiadeviceplugin" {
-#  description = "either to create and deploy eks nvidia device plugin for gpu resources"
-#  type        = bool
-#  default     = false
-#}
-#
+variable "create-nvidiadeviceplugin" {
+  description = "either to create and deploy eks nvidia device plugin for gpu resources"
+  type        = bool
+  default     = false
+}
+
 variable "create-albcontroller" {
   description = "either to create and deploy eks load balancer controller resources"
   type        = bool
@@ -137,4 +137,5 @@ variable "route53_zone_arns" {
   type        = list(string)
   default     = []
 }
+
 
