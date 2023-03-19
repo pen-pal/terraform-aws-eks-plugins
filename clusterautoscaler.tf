@@ -1,111 +1,89 @@
-data "aws_iam_policy_document" "cluster_autoscaler" {
-  count = var.create_autoscaler ? 1 : 0
+module "cluster_autoscaler_irsa_role" {
+  count = var.create-cluster-autoscaler ? 1 : 0
 
-  statement {
-    sid    = "clusterAutoscalerAll"
-    effect = "Allow"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> v5.11.1"
 
-    actions = [
-      "autoscaling:DescribeAutoScalingGroups",
-      "autoscaling:DescribeAutoScalingInstances",
-      "autoscaling:DescribeLaunchConfigurations",
-      "autoscaling:DescribeTags",
-      "ec2:DescribeLaunchTemplateVersions",
-    ]
+  role_name                        = "cluster-autoscaler"
+  attach_cluster_autoscaler_policy = true
+  cluster_autoscaler_cluster_ids   = [var.cluster_id]
 
-    resources = ["*"]
+  oidc_providers = {
+    ex = {
+      provider_arn               = var.oidc_issuer_arn
+      namespace_service_accounts = ["kube-system:${local.clusterautoscaler.name}-sa"]
+    }
   }
 
-  statement {
-    sid    = "clusterAutoscalerOwn"
-    effect = "Allow"
-
-    actions = [
-      "autoscaling:SetDesiredCapacity",
-      "autoscaling:TerminateInstanceInAutoScalingGroup",
-      "autoscaling:UpdateAutoScalingGroup",
-    ]
-
-    resources = ["*"]
-
-    condition {
-      test     = "StringEquals"
-      variable = "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/${local.eks.cluster_id}"
-      values   = ["owned"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/enabled"
-      values   = ["true"]
-    }
+  tags = {
+    Name           = "cluster-autoscaler"
+    ServiceAccount = "cluster-autoscaler-sa"
   }
 }
 
-resource "aws_iam_policy" "cluster_autoscaler" {
-  count = var.create_autoscaler ? 1 : 0
-
-  name_prefix = local.name_prefix
-  description = "EKS cluster-autoscaler policy for cluster ${local.eks.cluster_id}"
-  policy      = data.aws_iam_policy_document.cluster_autoscaler[0].json
-}
-
-module "iam-assumable-role-with-oidc-ca" {
-  count = var.create_autoscaler ? 1 : 0
-
-  source                        = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version                       = "4.3.0"
-  create_role                   = true
-  role_name                     = local.name_prefix
-  provider_url                  = replace(local.eks.oidc_issuer, "https://", "")
-  role_policy_arns              = [aws_iam_policy.cluster_autoscaler[0].arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:${local.clusterautoscaler.namespace}:${local.clusterautoscaler.serviceaccount}"]
-}
-
-# create service accont and annotate with iam role
+## create service accont and annotate with iam role
 resource "kubernetes_service_account" "clusterautoscaler_serviceaccount" {
-  count = var.create_autoscaler ? 1 : 0
+  count = var.create-cluster-autoscaler ? 1 : 0
 
   metadata {
-    name      = local.clusterautoscaler.serviceaccount
+    name      = "${local.clusterautoscaler.name}-sa"
     namespace = local.clusterautoscaler.namespace
     annotations = {
-      "eks.amazonaws.com/role-arn" = module.iam-assumable-role-with-oidc-ca[0].iam_role_arn
+      "eks.amazonaws.com/role-arn" = module.cluster_autoscaler_irsa_role[0].iam_role_arn
+      #"eks.amazonaws.com/role-arn" = module.cluster_autoscaler_irsa_role_with_oidc_ca[0].iam_role_arn
     }
   }
   automount_service_account_token = true
-  depends_on                      = [module.iam-assumable-role-with-oidc-ca]
+
+  depends_on = [module.cluster_autoscaler_irsa_role]
+  #depends_on                      = [module.cluster_autoscaler_irsa_role_with_oidc_ca]
 }
 
-# apply helm chart  maintained by clusterautoscaler team
-resource "helm_release" "clusterautoscaler" {
-  count = var.create_autoscaler ? 1 : 0
 
-  name       = "cluster-controller"
-  repository = "https://kubernetes.github.io/autoscaler"
-  chart      = "cluster-autoscaler"
-  version    = "9.10.7"
-  namespace  = local.clusterautoscaler.namespace
+## apply helm chart  maintained by clusterautoscaler team
+resource "helm_release" "cluster-autoscaler" {
+  count = var.create-cluster-autoscaler ? 1 : 0
+
+  name            = "cluster-autoscaler"
+  repository      = "https://kubernetes.github.io/autoscaler"
+  chart           = "cluster-autoscaler"
+  version         = "9.23.0"
+  namespace       = local.clusterautoscaler.namespace
+  description     = "Cluster AutoScaler helm Chart deployment configuration."
+  cleanup_on_fail = true
 
   set {
     name  = "rbac.serviceAccount.create"
     value = "false"
+    type  = "auto"
   }
   set {
     name  = "rbac.serviceAccount.name"
-    value = local.clusterautoscaler.serviceaccount
+    value = "${local.clusterautoscaler.name}-sa"
+    type  = "string"
   }
   set {
     name  = "autoDiscovery.clusterName"
-    value = local.eks.cluster_id
+    value = var.cluster_id
+    type  = "string"
   }
   set {
     name  = "autoDiscovery.enabled"
-    value = true
+    value = "true"
+    type  = "auto"
   }
   set {
     name  = "awsRegion"
     value = local.aws.region
+    type  = "string"
   }
-  depends_on = [kubernetes_service_account.clusterautoscaler_serviceaccount]
+  #set {
+  #  name  = "serviceMonitor.enabled"
+  #  value = "true"
+  #}
+  #set {
+  #  name  = "serviceMonitor.namespace"
+  #  value = "monitor"
+  #}
+
 }
